@@ -1,0 +1,56 @@
+<html>
+<body>
+<head>
+<title>libphoto</title>
+</head>
+
+<h1>Project Design</h1>
+
+<h3>Overview</h3>
+
+<p>
+This library consists of many concepts that are key to understanding the functionality of libphoto and its sub-applications.
+</p>
+
+<h3>ApplicationController</h3>
+<p>
+<code>ApplicationController</code> is the heart of the project. It contains methods related to almost all of the main concepts of the library and is the entry point for libphoto-based applications. Both FlashPhoto and Mia use a version of <code>ApplicationController</code> that uses these common methods and implements other project-specific features.
+</p>
+
+<img src="uml_application_controller.jpg" alt="ApplicationController">
+
+<p>
+As shown, <code>ApplicationController</code> contains several important methods that both FlashPhoto and Mia need to use. Each subclass - <code>FPApplicationController</code> and <code>MiaApplicationController</code> - extends <code>ApplicationController</code> and adds custom functionality based on the requirements of each individual project. For example, in <code>FPApplicationController</code>&#39;s constructor, the FlashPhoto-specific tools are added using <code>addTool</code>.
+</p>
+
+<h3>Tools</h3>
+<p>
+Tools are one of the most important features of libphoto. This part of the design is centered around a <code>Tool</code> class, which is modular enough for other developers to add new tools without much effort. <code>ApplicationController</code> contains a method called <code>addTool(Tool* tool)</code> to easily add a <code>Tool</code> to the library in an external application.
+</p>
+
+<img src="uml_tool.jpg" alt="Tool">
+    
+<p>
+Currently there are three subclasses of <code>Tool</code> that each have their own functionality. A <code>MaskTool</code> uses pre-generated masks to draw to the canvas. The <code>StampTool</code> draws an image to the canvas when the user clicks and the <code>BlurTool</code> blurs the pixels around the cursor when clicked or dragged. Each subclass overrides <code>onMouseAction</code> to accomplish these tasks. For information on how to add a new <code>Tool</code>, see <a href="dev_adding_new_brush.html">Adding a New Brush</a>.
+</p>
+
+<h3>Filters</h3>
+<p>
+Filters are another important and visually intriguing feature of the library. They involve modifying the entire canvas based on specified filtering algorithms and can also be easily extended upon by developers. The core object, <code>Filter</code>, provides an interface for creating your own filter algorithm. Again, <code>ApplicationController</code> contains a method for applying these filters to the canvas arbitrarily - <code>applyFilterToBuffer(Filter* filter)</code> will apply any subclass <code>Filter</code> pointer to the current <code>PixelBuffer</code>.
+</p>
+
+<img src="uml_filter.jpg" alt="Filter">
+
+<p>
+There are two types of <code>Filter</code> subclasses - <code>NormalFilter</code> and <code>ConvolutionFilter</code>. As shown, there are numerous subtypes of each. The distinction between "normal" and "convolution-based" is important to note when creating new filters. See <a href="dev_adding_new_filter.html">Adding a New Filter</a> for further information on how filters work and on how to implement your own filters.
+</p>
+
+<h3>Images</h3>
+<p>
+Another feature built into libphoto is image loading and saving. Users can save the canvas state to an image file either in PNG or JPEG format and load images onto the canvas for modification. The image design allows for any imaging format to be supported in the future using an <code>ImageAdaptor</code>. In addition, <code>ApplicationController</code> provides simple methods for loading and saving <code>Image</code> objects - <code>loadImage(string fileName)</code> and <code>saveImage(string fileName, Image image)</code>. The <code>Image</code> class and its use throughout the project is outlined below.
+</p>
+
+<img src="uml_image.jpg" alt="ImageDesign">
+
+</body>
+</html>

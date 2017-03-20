@@ -1,0 +1,75 @@
+<html>
+<body>
+<head>
+<title>libphoto</title>
+</head>
+
+<h1>Adding a New Brush</h1>
+
+<p>
+A brush (or tool) is a means for the user to draw directly onto the canvas. Each brush type should have a distinct visual behavior - a pen tool draws a relatively thin line, a spray can tool draws a larger, circular shape, etc. As shown by libphoto, FlashPhoto, and Mia, there are many possible brushes. Not all tools are relevant to the library, however, so it may be necessary to add your own. This page explains in detail how to do so.
+</p>
+
+<h3>The Tool Class and <code>onMouseAction</code></h3>
+
+<p>
+Before getting started, it may be useful to understand the ins and outs of the <code>Tool</code> class. As shown by the <a href="dev_project_design.html">Project Design</a> page, a <code>Tool</code> has one important method that should be overridden by all subclasses. This method, <code>onMouseAction(int x, int y, MouseAction action, PixelBuffer* buffer)</code>, is called each time a user performs an action with the mouse. The passed <code>MouseAction</code>, whether it be <code>CLICK</code> or <code>DRAG</code>, can be used to determine when your tool actually draws to the canvas. Some <code>Tool</code> subclasses that implement <code>onMouseAction</code> already exist for your use. Classes like <code>BlurTool</code> in FlashPhoto and <code>StampTool</code> in libphoto illustrate how to implement <code>onMouseAction</code> for custom behavior. <code>StampTool</code>&#39;s <onMouseAction> implementation is shown below.
+</p>
+
+<blockquote><div style="background-color:#DCDCDC; color:#000000; font-style: normal; font-family: Georgia;">
+    void StampTool::onMouseAction(int x, int y, MouseAction action, PixelBuffer* buffer) {
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;if (action == CLICK) {
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;m_image.applyToBuffer(buffer, x - m_image.getWidth() / 2, y - m_image.getHeight() / 2);
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;}
+    <br>}
+</div></blockquote>
+
+<p>
+Since a stamp tool draws an image to the canvas only when the user clicks (and does nothing when the user drags), <code>StampTool</code> only executes its logic if the passed <code>MouseAction</code> is a <code>CLICK</code>. If it is, the image applies its pixels to the <code>PixelBuffer</code>, centered around the given (x, y). As shown, <code>onMouseAction</code> is a means for you to directly modify the <code>PixelBuffer</code> when the user interacts with the canvas. Implementing a custom tool is as simple as extending <code>Tool</code> or any subclass and overriding this method.
+</p>
+
+<h3>Tools with Masks</h3>
+
+<p>
+A special type of <code>Tool</code> defined by libphoto is the <code>MaskTool</code>. The <code>MaskTool</code> class contains an instance of a <code>Mask</code> and applies that <code>Mask</code> to the canvas in its <code>onMouseAction</code> implementation. To create an instance of a <code>MaskTool</code> with a custom <code>Mask</code>, you simply need to pass an instance of a <code>Mask</code> to the <code>MaskTool</code> constructor. Basic <code>Mask</code> subclasses exist for your use, including the <code>CircleMask</code> and <code>RectangleMask</code>, which predictably draw their respective shapes to the canvas. You may use these existing classes to create basic <code>MaskTool</code>s, or you may extend <code>Mask</code> to specify more interesting tool shapes. This process is outlined below.
+</p>
+
+<h4>Creating Custom Masks</h4>
+
+<p>
+The <code>Mask</code> class is explained in some more detail on the <a href="dev_project_design.html">Project Design</a> page, but the key components to note are the <code>calculateInfluence(int x, int y)</code> method and the width and height parameters that every <code>Mask</code> subclass must define. Each <code>Mask</code> calculates its influence values based on this method and the bounds that you specify. The implementation for <code>CircleMask</code>, shown below, shows how to properly override <code>calculateInfluence</code> in order to create a custom shape.
+</p>
+
+<blockquote><div style="background-color:#DCDCDC; color:#000000; font-style: normal; font-family: Georgia;">
+    float CircleMask::calculateInfluence(int x, int y) {
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;int xx = x - m_radius;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;int yy = y - m_radius;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;if ((xx * xx) + (yy * yy) <= m_radius * m_radius) {
+        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return m_baseInfluence;
+        <br>&nbsp;&nbsp;&nbsp;&nbsp;}
+        <br>&nbsp;&nbsp;&nbsp;&nbsp;return 0;
+        <br>}
+</div></blockquote>
+
+<p>
+The passed (x, y) coordinates represent some point within the bounds of the <code>Mask</code>. It is important to note that these are <i>relative</i> <code>Mask</code> coordinates and not <i>absolute</i> <code>PixelBuffer</code> coordinates. These coordinates range from 0 to <code>width</code> - 1 horizontally and from 0 to <code>height</code> - 1 vertically. This code snippet shows how <code>CircleMask</code> uses these coordinates to calculate all the points in a circle. Those points within the boundaries of the <code>Mask</code> that also are within a circle of radius <code>m_radius</code> are given a value of <code>m_baseInfluence</code>, which is some constant integer value passed to <code>CircleMask</code>. This value, which should be greater than 0, will determine how much influence the program&#39;s current tool color will have on the current color at some absolute <code>PixelBuffer</code> coordinates (note that a <code>Mask</code> does not, and should not, know about absolute coordinates). Additionally, <code>CircleMask</code> returns 0 when a point is outside a circle. This means that any pixel inside the boundaries of the <code>CircleMask</code> but outside the circle itself will not be changed.
+</p>
+
+<p>
+After implementing a custom <code>Mask</code> subclass, you can then pass an instance of it to a <code>MaskTool</code> just as you would with any of the existing masks. For example:
+</p>
+
+<blockquote><div style="background-color:#DCDCDC; color:#000000; font-style: normal; font-family: Georgia;">
+    Tool myCoolMaskTool = new MaskTool(new SuperCoolMask(someWidth, someHeight), someColor, true);
+</div></blockquote>
+
+<p>
+You can then notify libphoto that the tool exists and can be used by the program with the line below. Call the method in a class containing an instance of your application's ApplicationController.
+</p>
+
+<blockquote><div style="background-color:#DCDCDC; color:#000000; font-style: normal; font-family: Georgia;">
+    applicationController->addTool(myCoolMaskTool);
+</div></blockquote>
+
+</body>
+</html>

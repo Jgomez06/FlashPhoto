@@ -1,0 +1,66 @@
+<html>
+<body>
+<head>
+<title>libphoto</title>
+</head>
+
+<h1>Programmer&#39;s Blog - Alex Puncochar</h1>
+
+<p>
+In past development updates, I have touched on my code contributions to FlashPhoto and the libphoto library. With these two projects essentially complete, all that was left for me to work on was the new Medical Imaging Application (Mia). Mia uses libphoto for its core features like tools and filters, but adds a few unique features useful for medical technicians. One of these features was the ability to work with images via the command-line. I admittedly struggled with this one for a bit, but in the end I feel that command-line is one of the nicer parts of our overall design.
+</p>
+
+<p>
+With Peter and John hard at work on finishing up libphoto and graphical mode for Mia, I was tasked with both the design and implementation of commands. Originally I thought the route of recursion-based parsing/lexing was my only option that would allow for good future-proof design. It was either that or a giant class of ifs, nested ifs, and more nested ifs. After thinking it over, however, I came up with a much cleaner design based on a simple system of matching and executing. There were a variety of required commands - help, convert image, filter image, etc. When a user entered one of these commands, I had to both detect them via syntax-matching and execute them based on the set of arguments passed. Since there were many possible ways for some commands to be considered syntactically correct (and many possible ways for a command to function) I needed a somewhat robust way of parsing and executing.
+</p>
+
+<p>
+The <code>Command</code> class solved all my issues. It contains two pure virtual methods - <code>match(int argCount, std::string* args)</code> and <code>execute(int argCount, std::string* args)</code>. Note both pass the same arguments, but they are both necessary parts of the two-stage system. The code snippet below shows a method in <code>CommandHandler</code> called <code>handleCommand</code>, which implements this system.
+</p>
+
+<blockquote><div style="background-color:#DCDCDC; color:#000000; font-style: normal; font-family: Georgia;">
+    void CommandHandler::handleCommand(int argCount, char* args[], ApplicationController* controller) {
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;// Convert arguments into a nicer string array, skipping the first argument
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;int cmdArgsSize = argCount - 1;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;std::string* cmdArgs = new std::string[cmdArgsSize];
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;for (int i = 1; i < argCount; i++) {
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;cmdArgs[i - 1] = args[i];
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;}
+    <br>
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;// Attempt to match and execute the command
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;Command* command;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;bool found = false;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;for (std::vector<Command*>::iterator it = m_commands.begin(); it != m_commands.end(); ++it) {
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;command = *it;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;if (command->match(cmdArgsSize, cmdArgs)) {
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;CommandResult* result = command->execute(cmdArgsSize, cmdArgs, controller);
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;result->run();
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;delete result;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;found = true;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;}
+    <br>
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;// Display help if command was not found
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;if (!found) {
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;std::cout << "Invalid command 'mia";
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for (int i = 0; i < cmdArgsSize; i++) {
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;std::cout << " " << cmdArgs[i];
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;}
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;std::cout << "':" << std::endl;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;HelpCommand::displayHelp();
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;}
+    <br>}
+</div></blockquote>
+
+<p><code>CommandHandler</code> holds a list of <code>Command</code> subclass pointers called <code>m_commands</code>, which it uses in <code>handleCommand</code>. When a user enters a command, all of the arguments are passed to this method. It then loops through all possible commands, calling <code>match</code> with a cleaned up array of string arguments. If a <code>Command</code> subclass matches the given arguments, its <code>execute</code> method is called. <code>execute</code> returns a <code>CommandResult</code>, which is a basic object containing one method, <code>run()</code>, that is called after the command is executed. This is especially useful for when a command fails. For example, a <code>Command</code> can return a <code>FailedCommandResult</code> with some helpful error message. <code>SuccessfulCommandResult</code> is returned by <code>execute</code> when a command succeeds.
+</p>
+
+<p>
+Note that the code style follows the <a href="dev_coding_style.html">Code Style</a> guidelines outlined by our team. For potentially confusing parts of the code, comments are included to explain what is going on. Variables use camel case and are given descriptive names. Pointers are cleaned up where required.
+</p>
+
+</body>
+</html>
+
+</body>
+</html>

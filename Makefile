@@ -1,0 +1,19 @@
+PROJECT_LIBS = STRING
+
+LIBPHOTO_PATH = ./libphoto
+FLASHPHOTO_PATH = ./FlashPhoto
+MIA_PATH = ./Mia
+TESTS_PATH = ./tests
+DOCUMENTATION = documentation
+DOXYFILE = Doxyfile
+
+all: $(PROJECT_LIBS)
+
+$(PROJECT_LIBS):
+	$(MAKE) -C $(LIBPHOTO_PATH)
+	$(MAKE) -C $(FLASHPHOTO_PATH)  
+	$(MAKE) -C $(MIA_PATH)
+	
+
+$(DOCUMENTATION):
+	doxygen $(DOXYFILE)

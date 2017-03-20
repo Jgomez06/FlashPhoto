@@ -1,0 +1,88 @@
+<html>
+<body>
+<head>
+<title>libphoto</title>
+</head>
+
+<h1>Adding a New Filter</h1>
+
+<p>
+While brushes are useful for drawing on the canvas, filters are necessary to modify the entire canvas. There are several different filters provided by libphoto (and several more by FlashPhoto), but even those may not be enough to accomplish what you want. In that case, it is extremely simple to add a new filter using libphoto. This page explains the steps to take in order to add a filter of your own.
+</p>
+
+<h3>Filters</h3>
+
+<p>
+Like the <code>Tool</code> class, the <code>Filter</code> class is simple to understand. The <a href="dev_project_design.html">Project Design</a> page gives explicit detail on the members and methods of the class, but for the purposes of this tutorial, only a few main concepts are necessary to understand. There are two possible types of filters - those that simply modify each pixel on the canvas (represented by the <code>NormalFilter</code> class) and those that use <a href="http://lodev.org/cgtutor/filtering.html#Convolution">convolution</a> to modify pixels based on neighboring pixel colors (represented by the <code>ConvolutionFilter</code> class). Both represent some algorithm used to obtain a new <code>ColorData</code> value from existing <code>ColorData</code> information.
+</p>
+
+<p>
+The most important part of filters is the algorithm describing them. Each filter must take into account existing <code>ColorData</code> information to calculate a new color value, which will then be applied to the canvas. <code>NormalFilter</code> and <code>ConvolutionFilter</code> differ in their algorithm implementation and are described in detail below.
+
+This can be accomplished using <code>calculate(int x, int y, PixelBuffer* buffer)</code>, which functions in a similar fashion to <code>calculateInfluence</code> in <code>Mask</code>.
+</p>
+
+<h3>Normal Filters</h3>
+
+<p>
+A <code>NormalFilter</code> contains one method to override - <code>convertPixel(ColorData pixel)</code> - that allows you to calculate a new </code>ColorData</code> value based on <code>pixel</code>, which contains color information for some pixel on the canvas. To create a <code>NormalFilter</code>, simply create a new subclass and override <code>convertPixel</code> with your custom calculations. An example implementation in libphoto, from <code>ThresholdFilter</code>, is shown below.
+</p>
+
+<blockquote><div style="background-color:#DCDCDC; color:#000000; font-style: normal; font-family: Georgia;">
+    ColorData ThresholdFilter::convertPixel(ColorData pixel) {
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;float newRed, newBlue, newGreen;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;if(pixel.getRed() > m_threshold)
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;newRed = 1.0;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;else
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;newRed = 0.0;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;if(pixel.getBlue() > m_threshold)
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;newBlue = 1.0;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;else
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;newBlue = 0.0;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;if(pixel.getGreen() > m_threshold)
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;newGreen = 1.0;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;else
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;newGreen = 0.0;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;return ColorData(newRed, newGreen, newBlue);
+    <br>}
+</div></blockquote>
+
+<p>
+Here the individual red, green, and blue components are set to either 0 or 1 based on the respective component values of <code>pixel</code>. At the end, a new <code>ColorData</code> object is returned containing the new component values.
+</p>
+
+<h3>Convolution Filters</h3>
+
+<p>
+Unlike <code>NormalFilter</code>s, <code>ConvolutionFilter</code> subclasses do not need to override any method. All <code>ConvolutionFilter</code>s require several things - a <a href="https://en.wikipedia.org/wiki/Kernel_(image_processing)">kernel matrix</a>, a convolution factor, and a bias value. The actual calculation of all <code>ConvolutionFilter</code> subclasses' algorithms is done in the parent class based on these specified values. In order to create a custom <code>ConvolutionFilter</code>, simply create a subclass of <code>ConvolutionFilter</code> and initialize the necessary variables. <code>SharpenFilter</code>, a convolution-based filter in libphoto, has its implementation shown below.
+</p>
+
+<blockquote><div style="background-color:#DCDCDC; color:#000000; font-style: normal; font-family: Georgia;">
+    SharpenFilter::SharpenFilter(float amount) {
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;m_kernelSize = 5;
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;m_kernel = new float [25] { -1, -1, -1, -1, -1,
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;-1,  2,  2,  2, -1,
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;-1,  2,  8,  2, -1,
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;-1,  2,  2,  2, -1,
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;-1, -1, -1, -1, -1 };
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;m_factor = 1.0 / (8.0 - (0.75 * amount));
+    <br>&nbsp;&nbsp;&nbsp;&nbsp;m_bias = 0.0;
+    <br>}
+</div></blockquote>
+
+<p>
+The constructor may contain as many parameters as you wish. Here, <code>SharpenFilter</code> uses the given <code>amount</code> to adjust <code>m_factor</code> accordingly. The defined <code>m_kernel</code> is where the sharpening functionality comes in, while <code>m_kernelSize</code> is set so that the algorithm knows the size of the kernel. The reasoning behind the values in the kernel will not be elaborated on here, but you can read more about kernels <a href="https://en.wikipedia.org/wiki/Kernel_(image_processing)">here</a>.
+</p>
+
+<h3>Applying a Filter</h3>
+
+<p>
+After writing a <code>Filter</code> subclass, it only takes one line to apply your fancy new filter to the canvas. Call the method in a class containing an instance of your application&#39;s <code>ApplicationController</code>.
+</p>
+
+<blockquote><div style="background-color:#DCDCDC; color:#000000; font-style: normal; font-family: Georgia;">
+    applicationController->applyFilterToBuffer(new FancyFilter(100.0, 5));
+</div></blockquote>
+
+</body>
+</html>

@@ -1,0 +1,5 @@
+PROJECT_NAME = 3081W libphoto
+INPUT = libphoto/include/ FlashPhoto/src Mia/src mainpage.dox
+OUTPUT_DIRECTORY = web
+HTML_OUTPUT = doxygen
+GENERATE_LATEX = NO
